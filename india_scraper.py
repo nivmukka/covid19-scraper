@@ -1,6 +1,7 @@
 import requests
-from bs4 import BeautifulSoup, element
+from bs4 import BeautifulSoup
 from datetime import datetime
+import re
 
 COVID19_INDIA_URL_OFFICIAL = "https://www.mohfw.gov.in/"
 DATE_TODAY = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
@@ -9,35 +10,27 @@ page = requests.get(COVID19_INDIA_URL_OFFICIAL)
 assert page.status_code == 200, 'Request to page did NOT respond with status code 200.'
 
 soup = BeautifulSoup(page.content, 'html.parser')
-# print(soup.prettify())
 
-soup_children_list = list(soup.children)
+national_data = soup.find('div', class_='site-stats-count').findChildren(name='li')
+sub_national_data = soup.find('div', class_='data-table table-responsive')
 
-site_stats_index = None
-state_data_index = None
+national_output_dict = {}
 
-for item in soup_children_list:
-    if '<div class="site-stats-count">' in str(item):
-        site_stats_index = soup_children_list.index(item)
-    if '<section class="site-update" id="state-data">' in str(item):
-        state_data_index = soup_children_list.index(item)
+for item in national_data:
+    item = item.text.strip()
 
-site_stats_html = soup_children_list[site_stats_index]
-state_data_html = soup_children_list[state_data_index]
+    if 'Active Cases' in item:
+        national_output_dict['Active Cases'] = int(re.findall('[0-9]+', item)[0])
 
-if not isinstance(site_stats_html, element.Tag):
-    raise TypeError('Wrong BeautifulSoup object type. Need <bs4.element.Tag>')
+    if 'Cured / Discharged' in item:
+        national_output_dict['Recovered Cases'] = int(re.findall('[0-9]+', item)[0])
 
-if not isinstance(state_data_html, element.Tag):
-    raise TypeError('Wrong BeautifulSoup object type. Need <bs4.element.Tag>')
+    if 'Death' in item:
+        national_output_dict['Deaths'] = int(re.findall('[0-9]+', item)[0])
 
-# soup_children_type_list = [type(item) for item in soup_children_list]
+    if 'Migrated' in item:
+        national_output_dict['Migrated'] = int(re.findall('[0-9]+', item)[0])
 
-children = list(list(list(site_stats_html.children)[1].children)[1].children)
-# print(children)
+national_output_dict['Cases'] = sum(list(national_output_dict.values()))
 
-
-
-print(soup.find_all('div', class_='site-stats-count'))
-# print(soup.find_all('div', class_='data-table table-responsive'))
-
+print(national_output_dict)
